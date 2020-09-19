@@ -6,7 +6,13 @@ import requests
 import numpy as np
 from difflib import SequenceMatcher
 
+from flask_cors import CORS, cross_origin
+
+
 app = flask.Flask(__name__)
+cors = CORS(app)
+app.config['CORS_HEADERS'] = 'Content-Type'
+
 app.config["DEBUG"] = True
 
 def similar(a, b):
@@ -84,6 +90,8 @@ def score_get(row,hardiness,moisture,heaviness,pH):
         
         
 @app.route('/attrib', methods=['GET'])
+@cross_origin()
+
 def api_all():
     lat = request.args.get('lat', type = float)
     lon = request.args.get('lon', type = float)
