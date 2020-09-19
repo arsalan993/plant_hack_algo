@@ -21,6 +21,104 @@ app.config["DEBUG"] = True
 def helloWorld():
   return "Hello, cross-origin-world!"
 
+def calc_carbon_tree(height, diameter=25, age = 10):
+    """Calculates annual CO2 Sequestration"""
+    """Height in meter, diameter in cm, age in years"""
+    """This includes habits: Tree, Bamboo"""
+    
+    #convert to imperial
+    height = height/3.281 #feet
+    diameter = diameter/2.54 #inches
+        
+    #calculate green weight of tree: (above-ground weight) * 1.2
+    if diameter < 11:
+        green_weight = (0.25 * diameter**2 * height) * 1.2
+    else:
+        green_weight = (0.15 * diameter**2 * height) * 1.2
+        
+    #dry weight: average tree is 72.5 dry matter    
+    dry_weight = 0.725 * green_weight
+    
+    #weight of carbon: 50% of tree dry weight
+    c_weight = 0.5 * dry_weight
+    
+    #weight of CO2 sequestered
+    co2_weight = 3.67 * c_weight
+    
+    return co2_weight/2.205/age #convert from lbs to kg and divide by age
+    
+def calc_carbon_shrub(height, age = 3):
+    """height in meter"""
+    """This includes habits: Shrub, fern"""
+    
+    
+    #approximate a sphere
+    #the taller the shrub, the lower its biomass density?
+    #get green weight
+    
+    scaling = 1/height * 25
+    volume = 4/3 * np.pi * (height/2)**3
+    green_weight = volume * scaling * 1.2
+
+    
+    #dry weight: average tree is 72.5 dry matter, shrubs probably aswell    
+    dry_weight = 0.725 * green_weight
+    
+    #weight of carbon: 50% of tree dry weight
+    c_weight = 0.5 * dry_weight
+    
+    #weight of CO2 sequestered
+    co2_weight = 3.67 * c_weight
+    
+    return co2_weight/age #convert from lbs to kg
+    
+def calc_carbon_herb(height, diameter = 1, age = 1):
+    """Calculates lifetime CO2 Sequestration"""
+    """This includes habits: perennial, annual, bulb, climber, biennial\
+    annual/biennial, perennial climber, annual/perennial, corm, annual climber"""
+    
+    #convert to imperial
+    height /= 3.281 #feet
+    diameter /= 2.54 #inches
+    
+    #print(height, diameter)
+    
+    #calculate green weight of herb: (above-ground weight) * 1.2
+    green_weight = ( diameter**2 * height) * 1.2
+            
+    #dry weight: average tree is 72.5 dry matter    
+    dry_weight = 0.725 * green_weight
+    
+    #weight of carbon: 50% of tree dry weight
+    c_weight = 0.5 * dry_weight
+    
+    #weight of CO2 sequestered
+    co2_weight = 3.67 * c_weight
+    
+    return co2_weight/2.205/1 #convert from lbs to kg, divide by age
+    
+def carbon_cal(row):
+    height = row['Height']
+    habit = row['Habit']
+    if habit in ['Tree', 'Bamboo']:
+        if height == None:
+            return None
+        else:
+            return calc_carbon_tree(height = height)
+    elif habit in ['Shrub', 'Fern']:
+        if height == None:
+            return None
+        else:
+            return calc_carbon_shrub(height = height)
+        
+    elif habit in ['Biennial/Perennial', 'Annual/Perennial', 'Climber',
+        'Perennial', 'Annual', 'Bulb', 'Perennial Climber',
+       'Biennial', 'Annual/Biennial', 'Corm', 'Annual Climber']:
+        if height == None:
+            return None
+        else:
+            return calc_carbon_herb(height = height)
+    
 
 def similar(a, b):
     return SequenceMatcher(None, a, b).ratio()
@@ -128,7 +226,7 @@ def api_all():
         pH = pH_numtocat(soil_feature[soil_feature.name == 'phh2o']['value'].values[0])
          
         cnx = sqlite3.connect('plants_db.db')
-        df = pd.read_sql_query("""SELECT "Latin name","Common name","Habit","Family","UK Hardiness","Soil","Moisture","pH","Medicinal","Range",
+        df = pd.read_sql_query("""SELECT "Latin name","Common name","Habit","Height","Family","UK Hardiness","Soil","Moisture","pH","Medicinal","Range",
         "Habitat","Cultivation details","Uses notes","Propagation" FROM plants_details where "UK Hardiness" = {} or "Soil"
          = "{}" or "Moisture" = "{}" or "pH" = "{}" """.format(hardiness,heaviness,moisture,pH),cnx)
         cnx.close()
@@ -136,7 +234,7 @@ def api_all():
         df['score'] = df[['UK Hardiness','Soil','Moisture','pH']].apply(score_get,axis=1, args=(hardiness,moisture,heaviness,pH))
         df = df.sample(frac=1).reset_index(drop=True)
         out = df.sort_values(by=['score'],ascending=False).head(10)
-        
+        out['reduc_in_CO2'] = out.apply(carbon_cal,axis=1)
         return out.to_json(orient = 'records')
     except Exception as e:
         return str(e)
@@ -154,6 +252,7 @@ def search_name():
         df["fuzz_t"] = df["fuzz_l"]+df["fuzz_c"]
         df = df.sample(frac=1).reset_index(drop=True)
         out = df.sort_values(by=['fuzz_t'],ascending=False).head(3)
+        out['reduc_in_CO2'] = out.apply(carbon_cal,axis=1)
         return out.to_json(orient = 'records')
     except Exception as e:
         return str(e)
