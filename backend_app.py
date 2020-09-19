@@ -5,8 +5,8 @@ import pandas as pd
 import requests
 import numpy as np
 from difflib import SequenceMatcher
-from fuzzywuzzy import fuzz
-
+#from fuzzywuzzy import fuzz
+import jellyfish
 from flask_cors import CORS, cross_origin
 
 
@@ -34,7 +34,7 @@ def temp_to_hard(temp):
 
 def fuzz_search(namecol,name):
     if pd.isnull(namecol) == False:
-        return fuzz.partial_ratio(namecol,name)
+        return jellyfish.jaro_distance(namecol.lower(),name.lower())
     else:
         return 0
 
@@ -149,9 +149,11 @@ def search_name():
         cnx = sqlite3.connect('plants_db.db')
         df = pd.read_sql_query("""SELECT * FROM plants_details""",cnx)
         cnx.close()
-        df["fuzz"] = df['Common name'].apply(fuzz_search, args=([name]))
+        df["fuzz_c"] = df['Common name'].apply(fuzz_search, args=([name]))
+        df["fuzz_l"] = df['Latin name'].apply(fuzz_search, args=([name]))
+        df["fuzz_t"] = df["fuzz_l"]+df["fuzz_c"]
         df = df.sample(frac=1).reset_index(drop=True)
-        out = df.sort_values(by=['fuzz'],ascending=False).head(3)
+        out = df.sort_values(by=['fuzz_t'],ascending=False).head(3)
         return out.to_json(orient = 'records')
     except Exception as e:
         return str(e)
