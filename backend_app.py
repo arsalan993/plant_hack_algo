@@ -15,6 +15,12 @@ app.config['CORS_HEADERS'] = 'Content-Type'
 
 app.config["DEBUG"] = True
 
+@app.route("/")
+@cross_origin()
+def helloWorld():
+  return "Hello, cross-origin-world!"
+
+
 def similar(a, b):
     return SequenceMatcher(None, a, b).ratio()
 
@@ -91,7 +97,6 @@ def score_get(row,hardiness,moisture,heaviness,pH):
         
 @app.route('/attrib', methods=['GET'])
 @cross_origin()
-
 def api_all():
     lat = request.args.get('lat', type = float)
     lon = request.args.get('lon', type = float)
