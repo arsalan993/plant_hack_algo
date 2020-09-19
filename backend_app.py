@@ -5,7 +5,6 @@ import pandas as pd
 import requests
 import numpy as np
 from difflib import SequenceMatcher
-#from fuzzywuzzy import fuzz
 import jellyfish
 from flask_cors import CORS, cross_origin
 
@@ -238,7 +237,7 @@ def api_all():
         return out.to_json(orient = 'records')
     except Exception as e:
         return str(e)
- 
+
 @app.route('/search', methods=['GET'])
 @cross_origin()
 def search_name():
