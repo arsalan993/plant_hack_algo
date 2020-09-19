@@ -5,6 +5,7 @@ import pandas as pd
 import requests
 import numpy as np
 from difflib import SequenceMatcher
+from fuzzywuzzy import fuzz
 
 from flask_cors import CORS, cross_origin
 
@@ -30,6 +31,12 @@ def temp_to_hard(temp):
     else:
         uk_steps = np.arange(-50, 20, 7)
         return np.argmax(uk_steps>temp)
+
+def fuzz_search(namecol,name):
+    if pd.isnull(namecol) == False:
+        return fuzz.partial_ratio(namecol,name)
+    else:
+        return 0
 
 def rainfall_to_moisture(rain):
     '''takes rainfall in mm/day'''
@@ -133,6 +140,20 @@ def api_all():
         return out.to_json(orient = 'records')
     except Exception as e:
         return str(e)
-    
+ 
+@app.route('/search', methods=['GET'])
+@cross_origin()
+def search_name():
+    name = request.args.get('name', type = str) 
+    try:
+        cnx = sqlite3.connect('plants_db.db')
+        df = pd.read_sql_query("""SELECT * FROM plants_details""",cnx)
+        cnx.close()
+        df["fuzz"] = df['Common name'].apply(fuzz_search, args=([name]))
+        df = df.sample(frac=1).reset_index(drop=True)
+        out = df.sort_values(by=['fuzz'],ascending=False).head(3)
+        return out.to_json(orient = 'records')
+    except Exception as e:
+        return str(e)
 if __name__ == '__main__':
     app.run()
