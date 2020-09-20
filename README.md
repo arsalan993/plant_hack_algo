@@ -9,5 +9,5 @@
 #### Finally execute backend.py file
 
 #### Once server is up and running you can request it in following way
-##### For search by name http://127.0.0.1:5000/search?name=<Plant Name>
+##### For search by name http://127.0.0.1:5000/search?name=[Plant%20Name]
 ##### For recommendation engine http://127.0.0.1:5000/attrib?lat=[Latitude]&lon=[Longitude]
